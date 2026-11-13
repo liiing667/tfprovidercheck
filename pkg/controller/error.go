@@ -7,4 +7,5 @@ var (
 	ErrProviderNameIsRequired    = errors.New("providers[].name is required")
 	ErrDisallowedProvider        = errors.New("this Terraform Provider is disallowed")
 	ErrDisallowedProviderVersion = errors.New("this Terraform Provider version is disallowed")
+	ErrDeniedProvider            = errors.New("this Terraform Provider is explicitly denied")
 )

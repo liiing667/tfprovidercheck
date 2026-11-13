@@ -10,6 +10,12 @@
             "$ref": "#/$defs/Provider"
           },
           "type": "array"
+        },
+        "denied_providers": {
+          "items": {
+            "$ref": "#/$defs/Provider"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,

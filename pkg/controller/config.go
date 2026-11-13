@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	Providers []*Provider `json:"providers"`
+	Providers       []*Provider `json:"providers"`
+	DeniedProviders []*Provider `json:"denied_providers,omitempty" yaml:"denied_providers"`
 }
 
 func (c *Controller) readConfig(cfg *Config, param *ParamRun) error {

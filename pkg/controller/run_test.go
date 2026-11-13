@@ -202,6 +202,107 @@ func TestController_Run(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			},
 			errMsg: `parse the provider version as semver: `,
 		},
+		{
+			name: "denied provider overrides allow list",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+denied_providers:
+- name: registry.terraform.io/hashicorp/aws
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+			err: controller.ErrDeniedProvider,
+		},
+		{
+			name: "denied provider version",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+denied_providers:
+- name: registry.terraform.io/hashicorp/aws
+  version: ">= 4.0.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: "4.5.0",
+				},
+			},
+			err: controller.ErrDeniedProvider,
+		},
+		{
+			name: "denied provider version doesn't match",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+denied_providers:
+- name: registry.terraform.io/hashicorp/aws
+  version: ">= 4.0.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+		},
+		{
+			name: "duplicated providers are intersected",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+  version: ">= 3.0.0"
+- name: registry.terraform.io/hashicorp/aws
+  version: "< 3.5.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: "3.6.0",
+				},
+			},
+			err: controller.ErrDisallowedProviderVersion,
+		},
+		{
+			name: "duplicated providers with empty version are intersected",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+- name: registry.terraform.io/hashicorp/aws
+  version: ">= 4.0.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+			err: controller.ErrDisallowedProviderVersion,
+		},
+		{
+			name: "all violations are reported in the stable order",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+denied_providers:
+- name: registry.terraform.io/hashicorp/aws
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider:                              awsVersion,
+					"registry.terraform.io/hashicorp/google": "4.0.0",
+					"registry.terraform.io/hashicorp/azure":  "3.0.0",
+				},
+			},
+			err:    controller.ErrDeniedProvider,
+			errMsg: "this Terraform Provider is explicitly denied\nthis Terraform Provider is disallowed\nthis Terraform Provider is disallowed",
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data {

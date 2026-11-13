@@ -73,6 +73,26 @@ providers:
 - `name` (Required, string): `name` must be equal to the provider name. Regular expression and glob aren't supported
 - `version` (Optional, string): The version constraint of Terraform Provider. `version` is evaluated as [hashicorp/go-version' Version Constraints](https://github.com/hashicorp/go-version#version-constraints). If `version` is empty, any version is allowed
 
+If the same provider is listed in `providers` multiple times, their version constraints are intersected (AND).
+
+The field `denied_providers` lists explicitly denied providers and their versions.
+The deny list takes precedence over the allow list: even if a provider is allowed by `providers`, it is rejected if it matches an entry of `denied_providers`.
+If `version` of a denied provider is empty, any version of the provider is denied.
+
+e.g.
+
+```yaml
+providers:
+  - name: registry.terraform.io/hashicorp/aws
+    version: ">= 3.0.0"
+denied_providers:
+  # aws 3.x is allowed except for vulnerable versions
+  - name: registry.terraform.io/hashicorp/aws
+    version: ">= 3.0.0, < 3.5.0"
+```
+
+tfprovidercheck checks all providers and reports all violations in the alphabetical order of provider names.
+
 ## :bulb: Prevent configuration from being tampered
 
 It's important to prevent configuration from being tamperd.
