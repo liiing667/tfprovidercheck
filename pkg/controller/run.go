@@ -24,10 +24,19 @@ func (c *Controller) Run(_ context.Context, _ *slog.Logger, param *ParamRun, vou
 }
 
 func parseConfig(cfg *Config, providers map[string]version.Constraints) error {
+	constraintsByName := make(map[string]string, len(cfg.Providers))
 	for _, provider := range cfg.Providers {
 		if provider.Name == "" {
 			return ErrProviderNameIsRequired
 		}
+		if prev, ok := constraintsByName[provider.Name]; ok && prev != provider.VersionConstraints {
+			return slogerr.With(ErrConflictingVersionConstraints, //nolint:wrapcheck
+				"provider_name", provider.Name,
+				"provider_version_constraints", prev,
+				"conflicting_provider_version_constraints", provider.VersionConstraints,
+			)
+		}
+		constraintsByName[provider.Name] = provider.VersionConstraints
 		if provider.VersionConstraints == "" {
 			providers[provider.Name] = nil
 			continue

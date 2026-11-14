@@ -59,6 +59,52 @@ func TestController_Run(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			errMsg: `marshal configuration as YAML: `,
 		},
 		{
+			name: "config body with an unknown field",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+  versoin: ">= 3.0.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+			errMsg: `marshal configuration as YAML: `,
+		},
+		{
+			name: "config body with an invalid scalar type",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+  version:
+  - ">= 3.0.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+			errMsg: `marshal configuration as YAML: `,
+		},
+		{
+			name: "config body with multiple documents",
+			param: &controller.ParamRun{
+				ConfigBody: awsProviderConfig + `---
+providers:
+- name: registry.terraform.io/hashicorp/google
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+			err: controller.ErrMultipleConfigDocuments,
+		},
+		{
 			name:   "config isn't found",
 			param:  &controller.ParamRun{},
 			errMsg: `open a configuration file: `,
@@ -86,6 +132,25 @@ func TestController_Run(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			},
 			files: map[string]string{
 				workspaceFooYAML: `{`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+			errMsg: `read a configuration file as YAML: `,
+		},
+		{
+			name: "config file with an unknown field",
+			param: &controller.ParamRun{
+				ConfigFilePath: workspaceFooYAML,
+				PWD:            workspacePath,
+			},
+			files: map[string]string{
+				workspaceFooYAML: `providers:
+- name: registry.terraform.io/hashicorp/aws
+  versoin: ">= 3.0.0"
+`,
 			},
 			vout: &controller.TerraformVersionOutput{
 				ProviderSelections: map[string]string{
@@ -160,6 +225,55 @@ func TestController_Run(t *testing.T) { //nolint:gocognit,cyclop,funlen
 				},
 			},
 			errMsg: "parse version constraints",
+		},
+		{
+			name: "conflicting version constraints",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+  version: ">= 3.0.0"
+- name: registry.terraform.io/hashicorp/aws
+  version: "< 4.0.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+			err: controller.ErrConflictingVersionConstraints,
+		},
+		{
+			name: "conflicting version constraints with an omitted version",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+- name: registry.terraform.io/hashicorp/aws
+  version: ">= 3.0.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
+			err: controller.ErrConflictingVersionConstraints,
+		},
+		{
+			name: "duplicated identical entries",
+			param: &controller.ParamRun{
+				ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+  version: ">= 3.0.0"
+- name: registry.terraform.io/hashicorp/aws
+  version: ">= 3.0.0"
+`,
+			},
+			vout: &controller.TerraformVersionOutput{
+				ProviderSelections: map[string]string{
+					awsProvider: awsVersion,
+				},
+			},
 		},
 		{
 			name: "disallowed provider",

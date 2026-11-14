@@ -119,6 +119,30 @@ func TestRunner_Run(t *testing.T) { //nolint:cyclop,tparallel,funlen
 }`),
 			},
 		},
+		{
+			name:   "config body with an unknown field",
+			errMsg: "marshal configuration as YAML",
+			args: []string{
+				cliBin,
+			},
+			runner: &cli.Runner{
+				Env: &cli.Env{
+					ConfigBody: `providers:
+- name: registry.terraform.io/hashicorp/aws
+  versoin: ">= 3.0.0"
+`,
+				},
+				IsTerminal: false,
+				Stdin: strings.NewReader(`{
+  "terraform_version": "1.5.7",
+  "platform": "darwin_arm64",
+  "provider_selections": {
+    "registry.terraform.io/hashicorp/aws": "3.76.1"
+  },
+  "terraform_outdated": true
+}`),
+			},
+		},
 	}
 	logger := slog.New(slog.DiscardHandler)
 	for _, d := range data { //nolint:paralleltest
